@@ -20,6 +20,7 @@
 *   - ENUM, LIST: should have same as grid (limit, offset, search, sort)
 *   - ENUM, LIST: should support wild chars
 *   - add selection of predefined times (used for appointments)
+*   - options.items - can be an array
 *
 ************************************************************************/
 
@@ -302,13 +303,17 @@
                         openOnFocus     : false,        // if to show overlay onclick or when typing
                         markSearch      : false
                     };
-                    options.items = this.normMenu(options.items); // need to be first
+                    if (typeof options.items == 'function') {
+                        options._items_fun = options.items
+                    }
+                    // need to be first
+                    options.items = w2obj.field.prototype.normMenu.call(this, options.items);
                     if (this.type === 'list') {
                         // defaults.search = (options.items && options.items.length >= 10 ? true : false);
                         defaults.openOnFocus = true;
                         $(this.el).addClass('w2ui-select');
                         // if simple value - look it up
-                        if (!$.isPlainObject(options.selected) && options.items) {
+                        if (!$.isPlainObject(options.selected) && Array.isArray(options.items)) {
                             for (var i = 0; i< options.items.length; i++) {
                                 var item = options.items[i];
                                 if (item && item.id === options.selected) {
@@ -376,8 +381,11 @@
                         onScroll        : null           // when div with selected items is scrolled
                     };
                     options = $.extend({}, defaults, options, { suffix: '' });
-                    options.items    = this.normMenu(options.items);
-                    options.selected = this.normMenu(options.selected);
+                    if (typeof options.items == 'function') {
+                        options._items_fun = options.items
+                    }
+                    options.items    = w2obj.field.prototype.normMenu.call(this, options.items);
+                    options.selected = w2obj.field.prototype.normMenu.call(this, options.selected);
                     this.options = options;
                     if (!$.isArray(options.selected)) options.selected = [];
                     $(this.el).data('selected', options.selected);
@@ -678,7 +686,7 @@
                             // default behavior
                             $().w2overlay();
                             selected.splice($(event.target).attr('index'), 1);
-                            $(obj.el).trigger('change');
+                            $(obj.el).trigger('input').trigger('change');
                             $(event.target).parent().fadeOut('fast');
                             setTimeout(function () {
                                 obj.refresh();
@@ -939,6 +947,10 @@
                     obj.search();
                     setTimeout(function () { obj.updateOverlay(); }, 1);
                 }, 1);
+                // regenerat items
+                if (typeof obj.options._items_fun == 'function') {
+                    obj.options.items = w2obj.field.prototype.normMenu.call(this, obj.options._items_fun);
+                }
             }
             // file
             if (obj.type === 'file') {
@@ -1081,14 +1093,14 @@
                         if (event.shiftKey) break; // no action if shift key is pressed
                         var newDT = w2utils.formatDate(dt.getTime() + daymil, options.format);
                         if (inc == 10) newDT = w2utils.formatDate(new Date(dt.getFullYear(), dt.getMonth()+1, dt.getDate()), options.format);
-                        $(obj.el).val(newDT).change();
+                        $(obj.el).val(newDT).trigger('input').change();
                         cancel = true;
                         break;
                     case 40: // down
                         if (event.shiftKey) break; // no action if shift key is pressed
                         var newDT = w2utils.formatDate(dt.getTime() - daymil, options.format);
                         if (inc == 10) newDT = w2utils.formatDate(new Date(dt.getFullYear(), dt.getMonth()-1, dt.getDate()), options.format);
-                        $(obj.el).val(newDT).change();
+                        $(obj.el).val(newDT).trigger('input').change();
                         cancel = true;
                         break;
                 }
@@ -1120,7 +1132,7 @@
                         break;
                 }
                 if (cancel) {
-                    $(obj.el).val(obj.fromMin(time)).change();
+                    $(obj.el).val(obj.fromMin(time)).trigger('input').change();
                     event.preventDefault();
                     setTimeout(function () {
                         // set cursor to the end
@@ -1142,14 +1154,14 @@
                         if (event.shiftKey) break; // no action if shift key is pressed
                         var newDT = w2utils.formatDateTime(dt.getTime() + daymil, options.format);
                         if (inc == 10) newDT = w2utils.formatDateTime(new Date(dt.getFullYear(), dt.getMonth()+1, dt.getDate()), options.format);
-                        $(obj.el).val(newDT).change();
+                        $(obj.el).val(newDT).trigger('input').change();
                         cancel = true;
                         break;
                     case 40: // down
                         if (event.shiftKey) break; // no action if shift key is pressed
                         var newDT = w2utils.formatDateTime(dt.getTime() - daymil, options.format);
                         if (inc == 10) newDT = w2utils.formatDateTime(new Date(dt.getFullYear(), dt.getMonth()-1, dt.getDate()), options.format);
-                        $(obj.el).val(newDT).change();
+                        $(obj.el).val(newDT).trigger('input').change();
                         cancel = true;
                         break;
                 }
@@ -1286,7 +1298,7 @@
                                 if (edata.isCancelled === true) return;
                                 // default behavior
                                 selected.pop();
-                                $(obj.el).trigger('change');
+                                $(obj.el).trigger('input').trigger('change');
                                 obj.refresh();
                                 // event after
                                 obj.trigger($.extend(edata, { phase: 'after' }));
@@ -1403,7 +1415,7 @@
             if (obj.tmp.xhr_search == null) obj.tmp.xhr_search = '';
             if (obj.tmp.xhr_total == null) obj.tmp.xhr_total = -1;
             // check if need to search
-            if (options.url && $(obj.el).prop('readonly') !== true && $(obj.el).prop('disabled') !== true && (
+            if (options.url && (
                     (options.items.length === 0 && obj.tmp.xhr_total !== 0) ||
                     (obj.tmp.xhr_total == options.cacheMax && search.length > obj.tmp.xhr_search.length) ||
                     (search.length >= obj.tmp.xhr_search.length && search.substr(0, obj.tmp.xhr_search.length) !== obj.tmp.xhr_search) ||
@@ -1479,6 +1491,27 @@
                             obj.tmp.xhr_total   = data.records.length;
                             options.items       = obj.normMenu(data.records);
                             if (search === '' && data.records.length === 0) obj.tmp.emptySet = true; else obj.tmp.emptySet = false;
+                            // preset item
+                            var find_selected = $(obj.el).data('find_selected');
+                            if (find_selected) {
+                                var sel;
+                                if (Array.isArray(find_selected)) {
+                                    sel = [];
+                                    find_selected.forEach(function (find) {
+                                        options.items.forEach(function (item) {
+                                            if (item.id == find) sel.push($.extend(true, {}, item));
+                                        })
+                                    });
+
+                                } else {
+                                    options.items.forEach(function (item) {
+                                        if (item.id == find_selected) {
+                                            sel = item
+                                        }
+                                    })
+                                }
+                                $(obj.el).data('selected', sel).removeData('find_selected').change();
+                            }
                             obj.search();
                             // event after
                             obj.trigger($.extend(edata2, { phase: 'after' }));
@@ -1498,8 +1531,15 @@
                                     '\n   RECEIVED:', typeof data === 'object' ? data : xhr.responseText);
                             }
                             // reset stats
+                            obj.tmp.xhr_loading = false;
+                            obj.tmp.xhr_search  = search;
+                            obj.tmp.xhr_total   = 0;
+                            options.items       = [];
                             obj.clearCache();
                             obj.search();
+                            obj.updateOverlay(false, '<div style="white-space: normal; line-height: 1.3">' +
+                                                        (edata2.error || 'Server communication failed') +
+                                                     '</div>');
                             // event after
                             obj.trigger($.extend(edata2, { phase: 'after' }));
                         });
@@ -1526,10 +1566,11 @@
                 search = target.val();
                 for (var s in selected) { if (selected[s]) ids.push(selected[s].id); }
             }
+            var items = options.items;
             if (obj.tmp.xhr_loading !== true) {
                 var shown = 0;
-                for (var i = 0; i < options.items.length; i++) {
-                    var item = options.items[i];
+                for (var i = 0; i < items.length; i++) {
+                    var item = items[i];
                     if (options.compare != null) {
                         if (typeof options.compare === 'function') {
                             item.hidden = (options.compare.call(this, item, search) === false ? true : false);
@@ -1551,7 +1592,7 @@
                 }
                 // preselect first item
                 options.index = -1;
-                while (options.items[options.index] && options.items[options.index].hidden) options.index++;
+                while (items[options.index] && items[options.index].hidden) options.index++;
                 if (shown <= 0) options.index = -1;
                 options.spinner = false;
                 obj.updateOverlay();
@@ -1562,13 +1603,13 @@
                     }
                 }, 1);
             } else {
-                options.items.splice(0, options.cacheMax);
+                items.splice(0, options.cacheMax);
                 options.spinner = true;
                 obj.updateOverlay();
             }
         },
 
-        updateOverlay: function (indexOnly) {
+        updateOverlay: function (indexOnly, userError) {
             var obj     = this;
             var options = this.options;
             // color
@@ -1581,7 +1622,7 @@
                 },
                 function (color) {
                     if (color == null) return;
-                    $(obj.el).val(color).change();
+                    $(obj.el).val(color).trigger('input').change();
                 });
             }
             // date
@@ -1643,7 +1684,7 @@
                     $('#w2ui-overlay .w2ui-date')
                         .on('mousedown', function () {
                             var day = $(this).attr('date');
-                            $(obj.el).val(day).change();
+                            $(obj.el).val(day).trigger('input').change();
                             $(this).css({ 'background-color': '#B6D5FB', 'border-color': '#aaa' });
                         })
                         .on('mouseup', function () {
@@ -1677,7 +1718,7 @@
                     .on('mousedown', function (event) {
                         $(this).css({ 'background-color': '#B6D5FB', 'border-color': '#aaa' });
                         var hour = $(this).attr('hour');
-                        $(obj.el).val((hour > 12 && !h24 ? hour - 12 : hour) + ':00' + (!h24 ? (hour < 12 ? ' am' : ' pm') : '')).change();
+                        $(obj.el).val((hour > 12 && !h24 ? hour - 12 : hour) + ':00' + (!h24 ? (hour < 12 ? ' am' : ' pm') : '')).trigger('input').change();
                     });
                     if (this.options.noMinutes == null || this.options.noMinutes === false) {
                         $('#w2ui-overlay .w2ui-time')
@@ -1690,7 +1731,7 @@
                                     .on('mousedown', function () {
                                         $(this).css({ 'background-color': '#B6D5FB', 'border-color': '#aaa' });
                                         var min = $(this).attr('min');
-                                        $(obj.el).val((hour > 12 && !h24 ? hour - 12 : hour) + ':' + (min < 10 ? 0 : '') + min + (!h24 ? (hour < 12 ? ' am' : ' pm') : '')).change();
+                                        $(obj.el).val((hour > 12 && !h24 ? hour - 12 : hour) + ':' + (min < 10 ? 0 : '') + min + (!h24 ? (hour < 12 ? ' am' : ' pm') : '')).trigger('input').change();
                                     })
                                     .on('mouseup', function () {
                                         setTimeout(function () { if ($("#w2ui-overlay").length > 0) $('#w2ui-overlay').removeData('keepOpen')[0].hide(); }, 10);
@@ -1768,7 +1809,7 @@
                     $('#w2ui-overlay .w2ui-date')
                         .on('mousedown', function () {
                             var day = $(this).attr('date');
-                            $(obj.el).val(day).change();
+                            $(obj.el).val(day).trigger('input').change();
                             $(this).css({ 'background-color': '#B6D5FB', 'border-color': '#aaa' });
                             selDate = new Date($(this).attr('data-date'));
                         })
@@ -1785,8 +1826,8 @@
                                     selHour = $(this).attr('hour');
                                     selDate.setHours(selHour);
                                     var txt = w2utils.formatDateTime(selDate, obj.options.format);
-                                    $(obj.el).val(txt).change();
-                                    //$(obj.el).val((hour > 12 && !h24 ? hour - 12 : hour) + ':00' + (!h24 ? (hour < 12 ? ' am' : ' pm') : '')).change();
+                                    $(obj.el).val(txt).trigger('input').change();
+                                    //$(obj.el).val((hour > 12 && !h24 ? hour - 12 : hour) + ':00' + (!h24 ? (hour < 12 ? ' am' : ' pm') : '')).trigger('input').change();
                                 });
                             if (obj.options.noMinutes == null || obj.options.noMinutes === false) {
                                 $('#w2ui-overlay .w2ui-time')
@@ -1801,8 +1842,8 @@
                                                 selMin = $(this).attr('min');
                                                 selDate.setHours(selHour, selMin);
                                                 var txt = w2utils.formatDateTime(selDate, obj.options.format);
-                                                $(obj.el).val(txt).change();
-                                                //$(obj.el).val((hour > 12 && !h24 ? hour - 12 : hour) + ':' + (min < 10 ? 0 : '') + min + (!h24 ? (hour < 12 ? ' am' : ' pm') : '')).change();
+                                                $(obj.el).val(txt).trigger('input').change();
+                                                //$(obj.el).val((hour > 12 && !h24 ? hour - 12 : hour) + ':' + (min < 10 ? 0 : '') + min + (!h24 ? (hour < 12 ? ' am' : ' pm') : '')).trigger('input').change();
                                             })
                                             .on('mouseup', function () {
                                                 setTimeout(function () { if ($("#w2ui-overlay").length > 0) $('#w2ui-overlay').removeData('keepOpen')[0].hide(); }, 10);
@@ -1830,7 +1871,7 @@
                         .on('mousedown', function () {
                             // this currently ignores blocked days or start / end dates!
                             var tmp = w2utils.formatDateTime(new Date(), obj.options.format);
-                            $(obj.el).val(tmp).change();
+                            $(obj.el).val(tmp).trigger('input').change();
                             return false;
                         })
                         .on('mouseup', function () {
@@ -1878,7 +1919,8 @@
                     if (options.url == null && options.items.length === 0) msgNoItems = w2utils.lang('Empty list');
                     if (options.msgNoItems != null) msgNoItems = options.msgNoItems;
                     if (typeof msgNoItems === 'function') msgNoItems = msgNoItems(options);
-                    $(el).w2menu((!indexOnly ? 'refresh' : 'refresh-index'), $.extend(true, {}, options, {
+                    if (userError) msgNoItems = userError;
+                    var params = $.extend(true, {}, options, {
                         search     : false,
                         render     : options.renderDrop,
                         maxHeight  : options.maxDropHeight,
@@ -1896,7 +1938,7 @@
                                     if (selected.length >= options.max && options.max > 0) selected.pop();
                                     delete event.item.hidden;
                                     selected.push(event.item);
-                                    $(obj.el).data('selected', selected).change();
+                                    $(obj.el).data('selected', selected).trigger('input').change();
                                     $(obj.helpers.multi).find('input').val('').width(20);
                                     obj.refresh();
                                     if ($("#w2ui-overlay").length > 0) $('#w2ui-overlay')[0].hide();
@@ -1904,11 +1946,12 @@
                                     obj.trigger($.extend(edata, { phase: 'after' }));
                                 }
                             } else {
-                                $(obj.el).data('selected', event.item).val(event.item.text).change();
+                                $(obj.el).data('selected', event.item).val(event.item.text).trigger('input').change();
                                 if (obj.helpers.focus) obj.helpers.focus.find('input').val('');
                             }
                         }
-                    }));
+                    });
+                    $(el).w2menu((!indexOnly ? 'refresh' : 'refresh-index'), params);
                 }
             }
         },
@@ -2210,8 +2253,8 @@
             // clean up & init
             $(obj.helpers.focus).remove();
             // remember original tabindex
-            var tabIndex = $(obj.el).attr('tabIndex');
-            if (tabIndex && tabIndex !== -1) obj.el._tabIndex = tabIndex;
+            var tabIndex = parseInt($(obj.el).attr('tabIndex'));
+            if (!isNaN(tabIndex) && tabIndex !== -1) obj.el._tabIndex = tabIndex;
             if (obj.el._tabIndex) tabIndex = obj.el._tabIndex;
             if (tabIndex == null) tabIndex = -1;
             // build helper
@@ -2469,7 +2512,7 @@
                         var ind = fl.indexOf(',');
                         newItem.content = fl.substr(ind+1);
                         obj.refresh();
-                        $(obj.el).trigger('change');
+                        $(obj.el).trigger('input').trigger('change');
                         // event after
                         obj.trigger($.extend(edata, { phase: 'after' }));
                     };
@@ -2477,25 +2520,27 @@
                 reader.readAsDataURL(file);
             } else {
                 obj.refresh();
-                $(obj.el).trigger('change');
+                $(obj.el).trigger('input').trigger('change');
                 obj.trigger($.extend(edata, { phase: 'after' }));
             }
         },
 
-        normMenu: function (menu) {
+        normMenu: function (menu, el) {
             if ($.isArray(menu)) {
                 for (var m = 0; m < menu.length; m++) {
                     if (typeof menu[m] === 'string') {
                         menu[m] = { id: menu[m], text: menu[m] };
-                    } else {
+                    } else if (menu[m] != null) {
                         if (menu[m].text != null && menu[m].id == null) menu[m].id = menu[m].text;
                         if (menu[m].text == null && menu[m].id != null) menu[m].text = menu[m].id;
                         if (menu[m].caption != null) menu[m].text = menu[m].caption;
+                    } else {
+                        menu[m] = { id: null, text: 'null' }
                     }
                 }
                 return menu;
             } else if (typeof menu === 'function') {
-                return this.normMenu(menu());
+                return w2obj.field.prototype.normMenu.call(this, menu.call(this, el));
             } else if (typeof menu === 'object') {
                 var tmp = [];
                 for (var m in menu) tmp.push({ id: m, text: menu[m] });

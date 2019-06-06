@@ -31,6 +31,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - parseColor(str) returns rgb
 *   - rgb2hsv, hsv2rgb
 *   - color.onSelect
+*   - color.html
 *   - refactored w2tag object, it has more potential with $().data('w2tag')
 *
 ************************************************/
@@ -57,7 +58,8 @@ var w2utils = (function ($) {
             "dataType"          : 'HTTPJSON', // can be HTTP, HTTPJSON, RESTFULL, RESTFULLJSON, JSON (case sensitive)
             "phrases"           : {},         // empty object for english phrases
             "dateStartYear"     : 1950,       // start year for date-picker
-            "dateEndYear"       : 2020        // end year for date picker
+            "dateEndYear"       : 2020,       // end year for date picker
+            "macButtonOrder"    : false       // if true, Yes on the right side
         },
         isBin           : isBin,
         isInt           : isInt,
@@ -177,23 +179,23 @@ var w2utils = (function ($) {
 
         if (format == null) format = w2utils.settings.dateFormat;
 
-        if (typeof val.getUTCFullYear === 'function') { // date object
-            year  = val.getUTCFullYear();
-            month = val.getUTCMonth() + 1;
-            day   = val.getUTCDate();
+        if (typeof val.getFullYear === 'function') { // date object
+            year  = val.getFullYear();
+            month = val.getMonth() + 1;
+            day   = val.getDate();
         } else if (parseInt(val) == val && parseInt(val) > 0) {
             val = new Date(parseInt(val));
-            year  = val.getUTCFullYear();
-            month = val.getUTCMonth() + 1;
-            day   = val.getUTCDate();
+            year  = val.getFullYear();
+            month = val.getMonth() + 1;
+            day   = val.getDate();
 		} else if (String(new Date(val)) != 'Invalid Date') {
             val = new Date(val);
             if (retDate !== true) return true;
             return val;
             val = new Date(val);
-            year  = val.getUTCFullYear();
-            month = val.getUTCMonth() + 1;
-            day   = val.getUTCDate();
+            year  = val.getFullYear();
+            month = val.getMonth() + 1;
+            day   = val.getDate();
         } else {
             val = String(val);
             // convert month formats
@@ -280,7 +282,7 @@ var w2utils = (function ($) {
     function isDateTime (val, format, retDate) {
         if (format == null) format = w2utils.settings.datetimeFormat;
         var formats = format.split('|');
-        if (typeof val.getUTCFullYear === 'function') { // date object
+        if (typeof val.getFullYear === 'function') { // date object
             if (retDate !== true) return true;
             return val;
         } else if (parseInt(val) === val && parseInt(val) >= 0) {
@@ -316,7 +318,7 @@ var w2utils = (function ($) {
     function age(dateStr) {
         var d1;
         if (dateStr === '' || dateStr == null) return '';
-        if (typeof dateStr.getUTCFullYear === 'function') { // date object
+        if (typeof dateStr.getFullYear === 'function') { // date object
             d1 = dateStr;
         } else if (parseInt(dateStr) == dateStr && parseInt(dateStr) > 0) {
             d1 = new Date(parseInt(dateStr));
@@ -3318,6 +3320,7 @@ w2utils.event = {
             html += '<div class="w2ui-color-tabs">'+
                     '   <div class="w2ui-color-tab selected" onclick="jQuery(this).addClass(\'selected\').next().removeClass(\'selected\').parents(\'.w2ui-overlay\').find(\'.w2ui-color-advanced\').hide().parent().find(\'.w2ui-color-palette\').show(); jQuery.fn._colorAdvanced = false; jQuery(\'#w2ui-overlay\')[0].resize()"><span class="w2ui-icon w2ui-icon-colors"></span></div>'+
                     '   <div class="w2ui-color-tab" onclick="jQuery(this).addClass(\'selected\').prev().removeClass(\'selected\').parents(\'.w2ui-overlay\').find(\'.w2ui-color-advanced\').show().parent().find(\'.w2ui-color-palette\').hide(); jQuery.fn._colorAdvanced = true; jQuery(\'#w2ui-overlay\')[0].resize()"><span class="w2ui-icon w2ui-icon-settings"></span></div>'+
+                    '   <div style="padding: 8px; text-align: right;">' + (typeof options.html == 'string' ? options.html : '') + '</div>' +
                     '</div>'+
                     '</div>'+
                     '<div style="clear: both; height: 0"></div>';
@@ -3326,22 +3329,3 @@ w2utils.event = {
     };
 
 })(jQuery);
-
-/***********************************************************
-*  Compatibility with CommonJS and AMD modules
-*
-*********************************************************/
-
-(function(global, w2ui) {
-    if (typeof define=='function' && define.amd) {
-        return define(function(){ return w2ui; });
-    }
-    if (typeof exports!='undefined') {
-        if (typeof module!='undefined' && module.exports)
-            return exports = module.exports = w2ui;
-        global = exports;
-    }
-    for (var m in w2ui) {
-        global[m] = w2ui[m];
-    }
-})(this, { w2ui: w2ui, w2obj: w2obj, w2utils: w2utils });
