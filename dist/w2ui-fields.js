@@ -39,6 +39,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - w2tag options.maxWidth
 *   - w2tag options.auto - if set to true, then tag will show on mouseover
 *   - w2tag options.showOn, hideOn - if set to true, then tag will show on mouseover
+*   - w2tag options.className: 'w2ui-light' - for light color tag
 *   - w2menu options.items... remove t/f
 *   - w2menu options.items... keepOpen t/f
 *   - w2menu options.onRemove
@@ -46,6 +47,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - w2menu - can not nest items, item.items and item.expanded
 *   - w2menu.options.topHTML
 *   - w2menu.options.menuStyle
+*   - naturalCompare
 *
 ************************************************/
 
@@ -2516,9 +2518,15 @@ w2utils.event = {
         if (options.contextMenu && (options.pageX == null || options.pageY == null)) {
             console.log('ERROR: to display menu at mouse location, pass options.pageX and options.pageY.');
         }
+        var data_str = ''
+        if (options.data) {
+            Object.keys(options.data).forEach(function (item) {
+                data_str += 'data-'+ item + '="' + options.data[item] +'"'
+            })
+        }
         // append
         $('body').append(
-            '<div id="w2ui-overlay'+ name +'" style="display: none; left: 0px; top: 0px; '+ options.overlayStyle +'"'+
+            '<div id="w2ui-overlay'+ name +'" style="display: none; left: 0px; top: 0px; '+ options.overlayStyle +'" '+ data_str +
             '        class="w2ui-reset w2ui-overlay '+ ($(this).parents('.w2ui-popup, .w2ui-overlay-popup, .w2ui-message').length > 0 ? 'w2ui-overlay-popup' : '') +'">'+
             '    <style></style>'+
             '    <div style="min-width: 100%; '+ options.style +'" class="'+ options['class'] +'"></div>'+
@@ -2695,7 +2703,7 @@ w2utils.event = {
                     maxWidth  = window.innerWidth + $(document).scrollLeft() - options.pageX;
                 }
 
-                if ((maxHeight > -50 && maxHeight < 210) || options.openAbove === true) {
+                if (((maxHeight > -50 && maxHeight < 210) || options.openAbove === true) && options.openAbove !== false) {
                     var tipOffset;
                     // show on top
                     if (options.contextMenu) { // context menu
@@ -3997,10 +4005,10 @@ w2utils.event = {
                 if (this.type !== 'list' && append) {
                     if ($(this.el).data('selected') == null) $(this.el).data('selected', []);
                     $(this.el).data('selected').push(val);
-                    $(this.el).change();
+                    $(this.el).trigger('input').change();
                 } else {
                     var it = (this.type === 'enum' ? [val] : val);
-                    $(this.el).data('selected', it).change();
+                    $(this.el).data('selected', it).trigger('input').change();
                 }
                 this.refresh();
             } else {
@@ -4015,10 +4023,10 @@ w2utils.event = {
                     if (this.type !== 'list' && append) {
                         if ($(this.el).data('selected') == null) $(this.el).data('selected', []);
                         $(this.el).data('selected').push(items[ind]);
-                        $(this.el).change();
+                        $(this.el).trigger('input').change();
                     } else {
                         var it = (this.type === 'enum' ? [items[ind]] : items[ind]);
-                        $(this.el).data('selected', it).change();
+                        $(this.el).data('selected', it).trigger('input').change();
                     }
                     this.refresh();
                     return true;
@@ -4390,7 +4398,7 @@ w2utils.event = {
                 var new_val = this.format(this.clean($(this.el).val()));
                 // if was modified
                 if (val !== '' && val != new_val) {
-                    $(this.el).val(new_val).change();
+                    $(this.el).val(new_val).trigger('input').change();
                     // cancel event
                     event.stopPropagation();
                     event.preventDefault();
@@ -4421,9 +4429,9 @@ w2utils.event = {
                 // convert linux timestamps
                 var tmp = parseInt(obj.el.value);
                 if (w2utils.isInt(obj.el.value) && tmp > 3000) {
-                    if (this.type === 'time') $(obj.el).val(w2utils.formatTime(new Date(tmp), options.format)).change();
-                    if (this.type === 'date') $(obj.el).val(w2utils.formatDate(new Date(tmp), options.format)).change();
-                    if (this.type === 'datetime') $(obj.el).val(w2utils.formatDateTime(new Date(tmp), options.format)).change();
+                    if (this.type === 'time') $(obj.el).val(w2utils.formatTime(new Date(tmp), options.format)).trigger('input').change();
+                    if (this.type === 'date') $(obj.el).val(w2utils.formatDate(new Date(tmp), options.format)).trigger('input').change();
+                    if (this.type === 'datetime') $(obj.el).val(w2utils.formatDateTime(new Date(tmp), options.format)).trigger('input').change();
                 }
             }
         },
@@ -4469,7 +4477,7 @@ w2utils.event = {
             }
             // file
             if (obj.type === 'file') {
-                $(obj.helpers.multi).css({ 'outline': 'auto 5px #7DB4F3', 'outline-offset': '-2px' });
+                $(obj.helpers.multi).css({ 'outline': 'auto 5px #7DB4F3', 'outline-offset': '2px' });
             }
         },
 
@@ -4495,7 +4503,7 @@ w2utils.event = {
             }
             if (['int', 'float', 'money', 'currency', 'percent'].indexOf(obj.type) !== -1) {
                 if (val !== '' && !obj.checkType(val)) {
-                    $(obj.el).val('').change();
+                    $(obj.el).val('').trigger('input').change();
                     if (options.silent === false) {
                         $(obj.el).w2tag('Not a valid number');
                         setTimeout(function () { $(obj.el).w2tag(''); }, 3000);
@@ -4506,28 +4514,28 @@ w2utils.event = {
             if (['date', 'time', 'datetime'].indexOf(obj.type) !== -1) {
                 // check if in range
                 if (val !== '' && !obj.inRange(obj.el.value)) {
-                    $(obj.el).val('').removeData('selected').change();
+                    $(obj.el).val('').removeData('selected').trigger('input').change();
                     if (options.silent === false) {
                         $(obj.el).w2tag('Not in range');
                         setTimeout(function () { $(obj.el).w2tag(''); }, 3000);
                     }
                 } else {
                     if (obj.type === 'date' && val !== '' && !w2utils.isDate(obj.el.value, options.format)) {
-                        $(obj.el).val('').removeData('selected').change();
+                        $(obj.el).val('').removeData('selected').trigger('input').change();
                         if (options.silent === false) {
                             $(obj.el).w2tag('Not a valid date');
                             setTimeout(function () { $(obj.el).w2tag(''); }, 3000);
                         }
                     }
                     else if (obj.type === 'time' && val !== '' && !w2utils.isTime(obj.el.value)) {
-                        $(obj.el).val('').removeData('selected').change();
+                        $(obj.el).val('').removeData('selected').trigger('input').change();
                         if (options.silent === false) {
                             $(obj.el).w2tag('Not a valid time');
                             setTimeout(function () { $(obj.el).w2tag(''); }, 3000);
                         }
                     }
                     else if (obj.type === 'datetime' && val !== '' && !w2utils.isDateTime(obj.el.value, options.format)) {
-                        $(obj.el).val('').removeData('selected').change();
+                        $(obj.el).val('').removeData('selected').trigger('input').change();
                         if (options.silent === false) {
                             $(obj.el).w2tag('Not a valid date');
                             setTimeout(function () { $(obj.el).w2tag(''); }, 3000);
@@ -4579,12 +4587,14 @@ w2utils.event = {
                 switch (key) {
                     case 38: // up
                         if (event.shiftKey) break; // no action if shift key is pressed
-                        $(obj.el).val((val + inc <= options.max || options.max == null ? Number((val + inc).toFixed(12)) : options.max)).change();
+                        var newValue = (val + inc <= options.max || options.max == null ? Number((val + inc).toFixed(12)) : options.max);
+                        $(obj.el).val(newValue).trigger('input').change();
                         cancel = true;
                         break;
                     case 40: // down
                         if (event.shiftKey) break; // no action if shift key is pressed
-                        $(obj.el).val((val - inc >= options.min || options.min == null ? Number((val - inc).toFixed(12)) : options.min)).change();
+                        var newValue = (val - inc >= options.min || options.min == null ? Number((val - inc).toFixed(12)) : options.min);
+                        $(obj.el).val(newValue).trigger('input').change();
                         cancel = true;
                         break;
                 }
@@ -4713,7 +4723,7 @@ w2utils.event = {
                     }
                     if (obj.el.nav && dir != null) {
                         newColor = obj.el.nav(dir);
-                        $(obj.el).val(newColor).change();
+                        $(obj.el).val(newColor).trigger('input').change();
                         event.preventDefault();
                     }
                 }
@@ -4770,7 +4780,7 @@ w2utils.event = {
                                 delete item.hidden;
                                 delete obj.tmp.force_open;
                                 selected.push(item);
-                                $(obj.el).change();
+                                $(obj.el).trigger('input').change();
                                 focus.val('').width(20);
                                 obj.refresh();
                                 // event after
@@ -4786,7 +4796,7 @@ w2utils.event = {
                                     if (selected.length >= options.max && options.max > 0) selected.pop();
                                     delete obj.tmp.force_open;
                                     selected.push(item);
-                                    $(obj.el).change();
+                                    $(obj.el).trigger('input').change();
                                     focus.val('').width(20);
                                     obj.refresh();
                                 }
@@ -4794,8 +4804,8 @@ w2utils.event = {
                                 obj.trigger($.extend(edata, { phase: 'after' }));
                             }
                         } else {
-                            if (item) $(obj.el).data('selected', item).val(item.text).change();
-                            if ($(obj.el).val() === '' && $(obj.el).data('selected')) $(obj.el).removeData('selected').val('').change();
+                            if (item) $(obj.el).data('selected', item).val(item.text).trigger('input').change();
+                            if ($(obj.el).val() === '' && $(obj.el).data('selected')) $(obj.el).removeData('selected').val('').trigger('input').change();
                             if (obj.type === 'list') {
                                 focus.val('');
                                 obj.refresh();
@@ -4821,7 +4831,7 @@ w2utils.event = {
                             }
                         }
                         if (obj.type === 'list' && focus.val() === '') {
-                            $(obj.el).data('selected', {}).change();
+                            $(obj.el).data('selected', {}).trigger('input').change();
                             obj.refresh();
                         }
                         break;
@@ -5032,7 +5042,7 @@ w2utils.event = {
                                         }
                                     })
                                 }
-                                $(obj.el).data('selected', sel).removeData('find_selected').change();
+                                $(obj.el).data('selected', sel).removeData('find_selected').trigger('input').change();
                             }
                             obj.search();
                             // event after
@@ -5853,7 +5863,7 @@ w2utils.event = {
                 })
                 .on('focus', function (event) {
                     pholder = $(obj.el).attr('placeholder');
-                    $(obj.el).css({ 'outline': 'auto 5px #7DB4F3', 'outline-offset': '-2px' });
+                    $(obj.el).css({ 'outline': 'auto 5px #7DB4F3', 'outline-offset': '2px' });
                     $(this).val('');
                     $(obj.el).triggerHandler('focus');
                     if (event.stopPropagation) event.stopPropagation(); else event.cancelBubble = true;
@@ -5953,7 +5963,7 @@ w2utils.event = {
                         $(obj.el).triggerHandler('click');
                     })
                     .on('focus', function (event) {
-                        $(div).css({ 'outline': 'auto 5px #7DB4F3', 'outline-offset': '-2px' });
+                        $(div).css({ 'outline': 'auto 5px #7DB4F3', 'outline-offset': '2px' });
                         $(obj.el).triggerHandler('focus');
                         if (event.stopPropagation) event.stopPropagation(); else event.cancelBubble = true;
                     })

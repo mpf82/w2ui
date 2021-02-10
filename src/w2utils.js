@@ -38,6 +38,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - w2tag options.maxWidth
 *   - w2tag options.auto - if set to true, then tag will show on mouseover
 *   - w2tag options.showOn, hideOn - if set to true, then tag will show on mouseover
+*   - w2tag options.className: 'w2ui-light' - for light color tag
 *   - w2menu options.items... remove t/f
 *   - w2menu options.items... keepOpen t/f
 *   - w2menu options.onRemove
@@ -45,6 +46,7 @@ var w2obj = w2obj || {}; // expose object to be able to overwrite default functi
 *   - w2menu - can not nest items, item.items and item.expanded
 *   - w2menu.options.topHTML
 *   - w2menu.options.menuStyle
+*   - naturalCompare
 *
 ************************************************/
 
@@ -448,12 +450,12 @@ var w2utils = (function ($) {
         return format.toLowerCase()
             .replace('month', w2utils.settings.fullmonths[month])
             .replace('mon', w2utils.settings.shortmonths[month])
-            .replace(/yyyy/g, year)
-            .replace(/yyy/g, year)
-            .replace(/yy/g, year > 2000 ? 100 + parseInt(String(year).substr(2)) : String(year).substr(2))
+            .replace(/yyyy/g, ('000' + year).slice(-4))
+            .replace(/yyy/g, ('000' + year).slice(-4))
+            .replace(/yy/g, ('0' + year).slice(-2))
             .replace(/(^|[^a-z$])y/g, '$1' + year)            // only y's that are not preceded by a letter
-            .replace(/mm/g, (month + 1 < 10 ? '0' : '') + (month + 1))
-            .replace(/dd/g, (date < 10 ? '0' : '') + date)
+            .replace(/mm/g, ('0' + (month + 1)).slice(-2))
+            .replace(/dd/g, ('0' + date).slice(-2))
             .replace(/th/g, (date == 1 ? 'st' : 'th'))
             .replace(/th/g, (date == 2 ? 'nd' : 'th'))
             .replace(/th/g, (date == 3 ? 'rd' : 'th'))
@@ -2515,9 +2517,15 @@ w2utils.event = {
         if (options.contextMenu && (options.pageX == null || options.pageY == null)) {
             console.log('ERROR: to display menu at mouse location, pass options.pageX and options.pageY.');
         }
+        var data_str = ''
+        if (options.data) {
+            Object.keys(options.data).forEach(function (item) {
+                data_str += 'data-'+ item + '="' + options.data[item] +'"'
+            })
+        }
         // append
         $('body').append(
-            '<div id="w2ui-overlay'+ name +'" style="display: none; left: 0px; top: 0px; '+ options.overlayStyle +'"'+
+            '<div id="w2ui-overlay'+ name +'" style="display: none; left: 0px; top: 0px; '+ options.overlayStyle +'" '+ data_str +
             '        class="w2ui-reset w2ui-overlay '+ ($(this).parents('.w2ui-popup, .w2ui-overlay-popup, .w2ui-message').length > 0 ? 'w2ui-overlay-popup' : '') +'">'+
             '    <style></style>'+
             '    <div style="min-width: 100%; '+ options.style +'" class="'+ options['class'] +'"></div>'+
@@ -2694,7 +2702,7 @@ w2utils.event = {
                     maxWidth  = window.innerWidth + $(document).scrollLeft() - options.pageX;
                 }
 
-                if ((maxHeight > -50 && maxHeight < 210) || options.openAbove === true) {
+                if (((maxHeight > -50 && maxHeight < 210) || options.openAbove === true) && options.openAbove !== false) {
                     var tipOffset;
                     // show on top
                     if (options.contextMenu) { // context menu
