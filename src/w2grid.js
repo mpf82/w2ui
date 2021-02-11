@@ -274,6 +274,8 @@
                     object.addSearch({ field: col.field, label: col.text, type: stype, attr: attr });
                 }
             }
+            // register new object
+            w2ui[object.name] = object;
             // init toolbar
             object.initToolbar();
             object.updateToolbar();
@@ -281,8 +283,6 @@
             if ($(this).length !== 0) {
                 object.render($(this)[0]);
             }
-            // register new object
-            w2ui[object.name] = object;
             return object;
 
         } else {
@@ -7514,7 +7514,7 @@
                     if (col.options && col.options.autoFormat === false) {
                         func = null;
                     }
-                    data = '<div style="'+ style +'">' + infoBubble + (typeof func == 'function' ? func(data, tmp[1]) : '') + '</div>';
+                    data = '<div style="'+ style +'">' + infoBubble + (typeof func == 'function' ? func(data, tmp[1], record) : '') + '</div>';
                 }
             } else {
                 // if editable checkbox
@@ -7625,7 +7625,7 @@
                     var val = (col ? this.parseField(rec, col.field) : '');
                     if (tmp.length > 1) {
                         if (w2utils.formatters[tmp[1]]) {
-                            val = w2utils.formatters[tmp[1]](val, tmp[2] || null);
+                            val = w2utils.formatters[tmp[1]](val, tmp[2] || null, rec);
                         } else {
                             console.log('ERROR: w2utils.formatters["'+ tmp[1] + '"] does not exists.')
                         }
@@ -7650,7 +7650,7 @@
                     var val = (col ? this.parseField(rec, col.field) : '');
                     if (tmp.length > 1) {
                         if (w2utils.formatters[tmp[1]]) {
-                            val = w2utils.formatters[tmp[1]](val, tmp[2] || null);
+                            val = w2utils.formatters[tmp[1]](val, tmp[2] || null, rec);
                         } else {
                             console.log('ERROR: w2utils.formatters["'+ tmp[1] + '"] does not exists.')
                         }
